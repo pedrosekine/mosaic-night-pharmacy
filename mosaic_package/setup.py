@@ -26,7 +26,8 @@ setup(
         'console_scripts': [
             'mosaic_node = mosaic_package.mosaic_node:main',
             'control_logic = mosaic_package.control_logic:main',
-            'movement = mosaic_package.movement:main'
+            'movement = mosaic_package.movement:main',
+            'arduino_reader = mosaic_package.arduino_reader:main'
         ],
     },
 )
