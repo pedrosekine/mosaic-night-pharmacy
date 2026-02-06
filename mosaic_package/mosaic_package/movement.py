@@ -34,9 +34,10 @@ import os
 
 import tf2_geometry_msgs 
 from xarm_msgs.srv import VacuumGripperCtrl
+from std_msgs.msg import Float32
 
 
-GROUP_NAME = "xarm6"         
+GROUP_NAME = "xarm6"
 BASE_LINK = "link_base"
 EE_LINK = "link1"         # sometimes "link_eef" depending on your xArm config
         
@@ -99,6 +100,15 @@ class TestMoveIt(Node):
             time.sleep(0.5)
             print("Waiting for vacuum gripper service...")
         self.transform_to_marker = None
+
+        # Subscribe to box height from arduino_reader node
+        self.box_height = None
+        self.create_subscription(
+            Float32,
+            '/arduino/box_height',
+            self._box_height_callback,
+            10
+        )
 
 
     def on_timer(self):
@@ -185,49 +195,6 @@ class TestMoveIt(Node):
         else:
             print("Was not able to find a plan :(")
 
-    # Function that is going be great for the medicine boxes
-    # def move_to_box(self):
-    #     rclpy.spin_once(self)
-
-    #     target_frame = "link_base"
-    #     source_frame = "link_tcp"
-    #     self.xarm.set_start_state_to_current_state()
-    #     pose_goal = PoseStamped()
-    #     pose_goal.header.frame_id = source_frame #
-    #     pose_goal.header.stamp = Time().to_msg() 
-    #     pose_goal.pose.orientation.x = 0. #
-    #     pose_goal.pose.orientation.y = 0. #
-    #     pose_goal.pose.orientation.z = 0. #
-    #     pose_goal.pose.orientation.w = 1.0 #
-    #     pose_goal.pose.position.x = 0. #
-    #     pose_goal.pose.position.y = 0. #
-    #     pose_goal.pose.position.z = 0.105 #
-
-    #     # Wait for the transform to be available
-    #     while not self.tf_buffer.can_transform(
-    #         target_frame, source_frame, rclpy.time.Time(), timeout=Duration(seconds=2.0)):
-    #         rclpy.spin_once(self)
-    #         time.sleep(0.5)
-    #         print("Cannot move to box")
-    #     print("Approaching the box")
-
-    #     # Perform the transformation
-    #     transformed_pose = self.tf_buffer.transform(pose_goal,
-    #         target_frame,
-    #         timeout=Duration(seconds=2.0)
-    #     )    
-    #     self.xarm.set_start_state_to_current_state()
-    #     self.xarm.set_goal_state(pose_stamped_msg=transformed_pose, pose_link="link_tcp")
-    #     planning_result = self.xarm.plan()
-    #     if planning_result:
-    #         print("Found plan for Move to Box! Going there now!")
-    #         robot_trajectory = planning_result.trajectory
-    #         return_value = self.moveit.execute(robot_trajectory=robot_trajectory,
-    #                                            controllers=[])
-    #         print(f"The status of the execution is {return_value}")
-    #     else:
-    #         print("Was not able to find a plan to Move to Box:(")
-
     def move_relative_to_tcp(self, x, y, z):
         rclpy.spin_once(self)
 
@@ -277,6 +244,21 @@ class TestMoveIt(Node):
         self.vacuum_gripper_client.call_async(request)
         print("Box picked up!")
 
+    def _box_height_callback(self, msg):
+        self.box_height = msg.data
+
+    def get_box_height(self, timeout=5.0):
+        """Wait for a box height reading from the Arduino, return height in meters."""
+        start = time.time()
+        while self.box_height is None and (time.time() - start) < timeout:
+            rclpy.spin_once(self, timeout_sec=0.1)
+        if self.box_height is None:
+            print("WARNING: No box height received from Arduino, using default 0.18")
+            return 0.18
+        height = self.box_height
+        print(f"Box height from Arduino: {height * 1000:.1f} mm")
+        return height
+
     def wait_seconds(self, seconds):
         start = time.time()
         while time.time() - start < seconds:
@@ -291,13 +273,17 @@ def main():
     node = TestMoveIt()
     node.vacuum_activator(False)
 
-    node.go_to_default("look-diagonal") 
+    node.go_to_default("look-diagonal")
 
     node.wait_seconds(0.5)
+
+    # Read box height BEFORE picking it up (box is still on the sensor)
+    box_height = node.get_box_height()
+    print(f"Box height measured: {box_height * 1000:.1f} mm")
 
     node.go_to_aruco()
     node.wait_seconds(0.5)
-    node.move_relative_to_tcp(0.015, 0.0, 0.101)
+    node.move_relative_to_tcp(0.013, 0.0, 0.101)
 
     node.wait_seconds(0.5)
     node.vacuum_activator(True)
@@ -306,14 +292,22 @@ def main():
 
     node.move_relative_to_tcp(0.0, 0.10, 0.0)
 
+    node.wait_seconds(0.2)
+
+    node.move_relative_to_tcp(0.0, 0.0, -0.3)
     node.wait_seconds(0.5)
 
-    node.move_relative_to_tcp(0.0, 0.0, -0.15)
+    node.go_to_default("look-down") 
     node.wait_seconds(0.5)
     
-    node.go_to_position(0., 0.44, 0.18)
+    # Use the box height measured earlier (before pickup)
+    drop_clearance = 0.01  # 10mm above the surface
+    drop_z = box_height + drop_clearance
+    print(f"Drop height: {drop_z * 1000:.1f} mm (box={box_height * 1000:.1f} mm + clearance={drop_clearance * 1000:.0f} mm)")
+    
+    node.go_to_position(0., 0.44, drop_z)
 
-    node.wait_seconds(0.5)
+    node.wait_seconds(0.2)
     node.vacuum_activator(False)
 
     node.destroy_node()
