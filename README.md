@@ -84,24 +84,24 @@ A customer requests a medicine by name. The operator selects the corresponding A
 ```mermaid
 flowchart LR
   subgraph Hardware
-    Arduino[(Arduino\nRotary Sensor)]
-    Camera[(OAK-D PoE\nCamera)]
+    Arduino[("Arduino\nRotary Sensor")]
+    Camera[("OAK-D PoE\nCamera")]
   end
 
   subgraph ROS 2 Nodes
-    ArduinoNode[arduino_reader_node]
-    ArucoNode[aruco_tracker_autostart]
-    MoveNode[xarm_planner_node]
-    XArmService[/xarm/set_vacuum_gripper]
+    ArduinoNode["arduino_reader_node"]
+    ArucoNode["aruco_tracker_autostart"]
+    MoveNode["xarm_planner_node"]
+    XArmService["/xarm/set_vacuum_gripper"]
   end
 
-  Arduino -->|serial 9600 baud| ArduinoNode
-  ArduinoNode -->|/arduino/box_height| MoveNode
+  Arduino -->|"serial 9600 baud"| ArduinoNode
+  ArduinoNode -->|"/arduino/box_height"| MoveNode
 
   Camera --> ArucoNode
-  ArucoNode -->|TF: marker_id → link_base| MoveNode
+  ArucoNode -->|"TF: marker_id to link_base"| MoveNode
 
-  MoveNode -->|service call| XArmService
+  MoveNode -->|"service call"| XArmService
 ```
 
 ---
@@ -248,7 +248,7 @@ Mosaic-Night-Pharmacy/
 ![Storage system overview](docs/media/storage-system.jpeg)
 
 ### System in Action
-<video src="docs/media/working-mechanism.mp4" controls muted width="100%"></video>
+[![Watch the prototype in operation](docs/media/storage-system.jpeg)](docs/media/working-mechanism.mp4)
 
 ---
 
