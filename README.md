@@ -270,7 +270,6 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## Authors
 
-<!-- Replace with your team members -->
 - Avneet Kaur
 - Ninar Alsaed
 - Pedro Marin Sekine

@@ -15,8 +15,8 @@ setup(
     zip_safe=True,
     maintainer='pedro-marin-sekine',
     maintainer_email='pedrosek@gmail.com',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    description='Pick-and-place control for an automated night pharmacy (xArm6, ArUco vision, Arduino height sensor)',
+    license='MIT',
     extras_require={
         'test': [
             'pytest',
